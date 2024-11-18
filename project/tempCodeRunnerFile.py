@@ -1,43 +1,40 @@
-import os
-import sys
-import urllib.request
-import json
-client_id = "0eNSo5Im5cqCzaFwINKm"  #클라이언트 ID
-client_secret = "xC3azZJ4x6"        #클라이언트 시크릿 코드
 
-searchWord = input()
 
-encText = urllib.parse.quote(searchWord)
-url = "https://openapi.naver.com/v1/search/book?display=100&query=" + encText # JSON 결과
-# url = "https://openapi.naver.com/v1/search/blog.xml?query=" + encText # XML 결과
-request = urllib.request.Request(url)
-request.add_header("X-Naver-Client-Id",client_id)
-request.add_header("X-Naver-Client-Secret",client_secret)
-response = urllib.request.urlopen(request)
-rescode = response.getcode()    #서버 오류코드
-if(rescode==200):
-    response_body = response.read()
-    #print(response_body.decode('utf-8'))
+result = []
 
-    response_body = json.loads(response_body.decode( 'utf-8' )) #string => dictionary
-    total = response_body["total"]
-    print(total)
+def main():    
+  html_file = "기상관측소_위치.html"
 
-    count = 1
-    jsondata = []
-    for item in response_body["items"]:
-        title   = item['title']
-        pubDate = item['pubdate']
-        link    = item['link']
-        author  = item['author']
-        #print("%d: %s / %s %s" %(count, pubDate, title, link))
-        jsondata.append({'count':count, 'title': title, 'author': author})
-        
-        count += 1
+  with open(html_file, "r", encoding="utf-8") as file:
+    html = file.read()
 
-    with open('c:/Users/82107/Documents/naver_book_%s.json' %searchWord, 'w', encoding='utf-8') as fout:
-        jsonFile = json.dumps(jsondata, indent=4, sort_keys=True, ensure_ascii=False)
-        fout.write(jsonFile)
+  soup = BeautifulSoup(html, 'html.parser')
 
-else:
-    print("Error Code:" + rescode)
+  tag_tbody = soup.find('tbody')
+
+  for store in tag_tbody.find_all('tr'):
+      store_td = store.find_all('td')
+      store_loc = store_td[3].string
+      store_address = store_td[4].string
+      store_lat = store_td[5].string
+      store_att = store_td[6].string
+      
+      result.append([store_loc] + [store_address] + [store_lat] + [store_att])
+
+  print(result)
+
+def showMap():
+    print('관측소 맵에 표시합니다')
+    position = [37.3921415, 126.9205866]  # 위치 수정
+    map = folium.Map(location=position, zoom_start=15)
+    
+    for loc in result:
+        popup = folium.Popup(loc[1], max_width=200)  # 수정: loc[1]으로 주소 표시
+        folium.Marker(location=[float(loc[2]), float(loc[3])], popup=popup, icon=folium.Icon(color='red', icon='star')).add_to(map)
+    
+    map.save("map.html")  # 저장 파일명 수정
+    webbrowser.open("map.html")  # 파일 열기
+
+if __name__ == '__main__':
+    main()
+    showMap()

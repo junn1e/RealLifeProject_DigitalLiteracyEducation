@@ -1,0 +1,2353 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>관측 지점 정보</title>
+
+  <!-- <link rel="stylesheet" type="text/css" href="/css/kma2012.css" /> -->
+  <link rel="stylesheet" type="text/css" href="/css/style.css" />
+  <link rel="stylesheet" type="text/css" href="/js/jquery/jquery-ui-1.8.21.custom.css">
+  <link rel="stylesheet" type="text/css" href="/css/common.css?ver=1">
+  <link rel="stylesheet" type="text/css" href="/css/contents.css?ver=1">
+  <script src="/js/jquery/jquery-1.7.2.min.js"></script>
+  <script src="/js/jquery/jquery-ui-1.8.21.custom.min.js"></script>
+  <script src="/js/jquery/plugin/jquery.jstree.js"></script>
+  <script src="/js/jquery/plugin/jquery.kmaform.js"></script>
+  <script src="/js/jquery/plugin/jquery.cookie.js"></script>
+  <script src="/js/jquery/plugin/jquery.form.js"></script>
+  <script src="/js/jquery/plugin/jquery.hotkeys.js"></script>
+  <script src="/js/jquery/plugin/jquery.alphanumeric.pack.js"></script>
+  <script src="/js/common.js"></script>
+
+
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+  <script type="text/javascript">
+
+    $(document).ready(function () {
+      //숫자만 입력
+      $('.numeric').numeric().css("ime-mode", "disabled");
+      //달력
+      $.datepicker.setDefaults({
+        closeText: "닫기",
+        prevText: "이전달",
+        nextText: "다음달",
+        currentText: "오늘",
+        monthNames: ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"],
+        monthNamesShort: ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"],
+        dayNames: ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"],
+        dayNamesShort: ["일", "월", "화", "수", "목", "금", "토"],
+        dayNamesMin: ["일", "월", "화", "수", "목", "금", "토"],
+        weekHeader: "주", dateFormat: "yymmdd",
+        firstDay: 0,
+        isRTL: !1,
+        showMonthAfterYear: 1,
+        yearSuffix: ""
+      });
+      $("input.calendar").datepicker().attr("maxlength", 8);
+      /* 검색조건 Start. */
+      //구분
+      $("select[name=searchFlag]").change(function () {
+        //지상, AWS인 경우 지역선택, 법정동 조회 가능
+        if ($(this).val() == 'DB001001' || $(this).val() == 'DB001002') {
+          $("select[name=searchSiDo]").attr("disabled", false).val("");
+          $("select[name=searchSiGunGu]").attr("disabled", false).emptySelectValueText(1);
+          $("select[name=searchDong]").attr("disabled", false).emptySelectValueText(1);
+          $("input[name=searchltc]").attr("disabled", false);
+        } else {
+          $("select[name=searchSiDo]").attr("disabled", true).val("");
+          $("select[name=searchSiGunGu]").attr("disabled", true).emptySelectValueText(1);
+          $("select[name=searchDong]").attr("disabled", true).emptySelectValueText(1);
+          $("input[name=searchltc]").attr("disabled", true).val("");
+        }
+      });
+      //지역선택 : 시도
+      $("select[name=searchSiDo]").change(function () {
+        $.post('/main/searchObvStnSiGunGu.json', $("form[name=popForm]").serialize(), function (data) {
+          $("select[name=searchSiGunGu]").loadSelectValueText(data, '0', 1);
+          $("select[name=searchDong]").emptySelectValueText(1);
+        }, 'json');
+      });
+      //지역선택 : 시도
+      $("select[name=searchSiGunGu]").change(function () {
+        $.post('/main/searchObvStnDong.json', $("form[name=popForm]").serialize(), function (data) {
+          $("select[name=searchDong]").loadSelectValueText(data, '0', 1);
+        }, 'json');
+      });
+      /* 검색조건 End. */
+      //검색
+      $("form[name=popForm]").find("a[name=btnSearch]").click(function () {
+        var sdt = $("input[name=searchSDate]").val();
+        var edt = $("input[name=searchEDate]").val();
+        if (sdt != '' && edt != '') {
+          if (sdt > edt) { alert("검색 기간의 시작일은  종료일 보다 이전 이어야 합니다."); return false; }
+        }
+        $("form[name=popForm]").submit();
+      });
+    });
+
+  </script>
+
+</head>
+
+<body class="popup" style="overflow: hidden">
+  <!-- start .container -->
+
+  <div class="popupbox" style="width:1100px; height:600px">
+    <form id="popForm" name="popForm" action="/main/obvStn.do" method="post">
+      <h2>관측 지점 정보 조회</h2>
+      <h3>지점정보참고</h3>
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" class="viewtable">
+        <colgroup>
+          <col width="20%">
+          <col width="40%">
+          <col width="40%">
+        </colgroup>
+        <tr>
+          <th scope="row"><strong>유인관측</strong></th>
+          <td>(청): 본청, 지방기상청 / (기): 기상대</td>
+          <td>무인관측요소 + 날씨(기상현상), 구름,적설</td>
+        </tr>
+        <tr>
+          <th scope="row"><strong>무인관측</strong></th>
+          <td>(관): 기상관측소 / (공): 공동 협력 관측소</td>
+          <td>기온, 강수량, 바람, 습도, 일조시간</td>
+        </tr>
+      </table>
+      <br class="clearfloat" />
+
+      <h3>검색</h3>
+      <div class="box_3" style="line-height: 2.5">
+        <label>구분</label>
+        <select id="searchFlag" name="searchFlag" style="margin-left:25px;">
+          <option value="DB001001" selected="selected">지상</option>
+          <option value="DB001002">AWS</option>
+          <option value="DB001003">고층</option>
+          <option value="DB001010">PM10</option>
+          <option value="DB001017">BUOY</option>
+        </select>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <label>(현)지점명</label><input id="searchStn" name="searchStn" style="margin-left:16px;" type="text"
+          value="" /><br />
+        <label>지역선택</label>
+        <select id="searchSiDo" name="searchSiDo" style="width:100px">
+          <option value="">전체</option>
+          <option value="강원도">강원도</option>
+          <option value="경기도">경기도</option>
+          <option value="경상남도">경상남도</option>
+          <option value="경상북도">경상북도</option>
+          <option value="광주광역시">광주광역시</option>
+          <option value="대구광역시">대구광역시</option>
+          <option value="대전광역시">대전광역시</option>
+          <option value="부산광역시">부산광역시</option>
+          <option value="서울특별시">서울특별시</option>
+          <option value="세종특별자치시">세종특별자치시</option>
+          <option value="울산광역시">울산광역시</option>
+          <option value="인천광역시">인천광역시</option>
+          <option value="전라남도">전라남도</option>
+          <option value="전라북도">전라북도</option>
+          <option value="제주특별자치도">제주특별자치도</option>
+          <option value="충청남도">충청남도</option>
+          <option value="충청북도">충청북도</option>
+        </select>
+        <select id="searchSiGunGu" name="searchSiGunGu" style="width:100px">
+          <option value="">전체</option>
+
+        </select>
+        <select id="searchDong" name="searchDong" style="width:100px">
+          <option value="">전체</option>
+
+        </select>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <label>법정동</label>
+        <input id="searchltc" name="searchltc" type="text" value="" />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <label>기간</label>
+        <input id="searchSDate" name="searchSDate" class="calendar" type="text" value="" /> ~ <input id="searchEDate"
+          name="searchEDate" class="calendar" type="text" value="" />
+        <a href="/main/obvStn.do" onclick="return false;" id="btnSearch" name="btnSearch"
+          class="btn_skyblue"><span>검색하기</span></a>
+        <br class="clearfloat" />
+      </div>
+      <span class="marginbottom30"></span>
+      <div style="overflow-y:scroll; height:300px">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" class="list">
+          <thead>
+
+
+
+
+
+            <tr>
+              <th scope="col" rowspan="2">지점번호</th>
+              <th scope="col" rowspan="2" width="80px">종료시각</th>
+              <th scope="col" rowspan="2" width="80px">시작시각</th>
+              <th scope="col" rowspan="2" width="80px">(현)지점명</th>
+              <th scope="col" rowspan="2">(현)주소</th>
+              <th scope="col" rowspan="2">위도</th>
+              <th scope="col" rowspan="2">경도</th>
+              <th scope="col" rowspan="2">노장<br />해발고도(m)</th>
+              <th scope="col" colspan="4">관측장비지상높이(m)</th>
+            </tr>
+            <tr>
+              <th scope="col">기압계</th>
+              <th scope="col">기온계</th>
+              <th scope="col">풍속계</th>
+              <th scope="col">강우계</th>
+            </tr>
+
+
+          </thead>
+          <tbody>
+
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;90</td>
+              <td>~</td>
+              <td>&nbsp;1968.01.01 00:00:00</td>
+              <td>&nbsp;속초</td>
+              <td class="left">&nbsp;강원도 고성군 토성면 봉포리</td>
+              <td>&nbsp;38.25085</td>
+              <td>&nbsp;128.56473</td>
+              <td>&nbsp;17.53</td>
+              <td>&nbsp;18.73</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.4</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;93</td>
+              <td>~</td>
+              <td>&nbsp;2016.10.01 00:00:00</td>
+              <td>&nbsp;북춘천</td>
+              <td class="left">&nbsp;</td>
+              <td>&nbsp;37.94738</td>
+              <td>&nbsp;127.75443</td>
+              <td>&nbsp;95.78</td>
+              <td>&nbsp;96.78</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.4</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;95</td>
+              <td>~</td>
+              <td>&nbsp;1988.01.01 00:00:00</td>
+              <td>&nbsp;철원</td>
+              <td class="left">&nbsp;강원도 철원군 갈말읍 군탄리</td>
+              <td>&nbsp;38.14787</td>
+              <td>&nbsp;127.3042</td>
+              <td>&nbsp;155.48</td>
+              <td>&nbsp;156.98</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;13.0</td>
+              <td class="last">&nbsp;1.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;98</td>
+              <td>~</td>
+              <td>&nbsp;1998.02.01 00:00:00</td>
+              <td>&nbsp;동두천</td>
+              <td class="left">&nbsp;경기도 동두천시 생연동</td>
+              <td>&nbsp;37.90188</td>
+              <td>&nbsp;127.0607</td>
+              <td>&nbsp;115.62</td>
+              <td>&nbsp;116.74</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.0</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;99</td>
+              <td>~</td>
+              <td>&nbsp;2001.12.07 00:00:00</td>
+              <td>&nbsp;파주</td>
+              <td class="left">&nbsp;경기도 파주시 문산읍 운천리</td>
+              <td>&nbsp;37.88589</td>
+              <td>&nbsp;126.76648</td>
+              <td>&nbsp;30.59</td>
+              <td>&nbsp;31.99</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.0</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;100</td>
+              <td>~</td>
+              <td>&nbsp;1971.07.15 00:00:00</td>
+              <td>&nbsp;대관령</td>
+              <td class="left">&nbsp;강원도 평창군 대관령면 횡계리</td>
+              <td>&nbsp;37.67713</td>
+              <td>&nbsp;128.71834</td>
+              <td>&nbsp;772.43</td>
+              <td>&nbsp;773.43</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.4</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;101</td>
+              <td>~</td>
+              <td>&nbsp;1966.01.01 00:00:00</td>
+              <td>&nbsp;춘천</td>
+              <td class="left">&nbsp;강원도 춘천시 우두동</td>
+              <td>&nbsp;37.90262</td>
+              <td>&nbsp;127.7357</td>
+              <td>&nbsp;75.82</td>
+              <td>&nbsp;77.05</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.4</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;102</td>
+              <td>~</td>
+              <td>&nbsp;2000.11.01 00:00:00</td>
+              <td>&nbsp;백령도</td>
+              <td class="left">&nbsp;인천광역시 옹진군 백령면 연화리</td>
+              <td>&nbsp;37.97396</td>
+              <td>&nbsp;124.71237</td>
+              <td>&nbsp;36.0</td>
+              <td>&nbsp;37.2</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;9.0</td>
+              <td class="last">&nbsp;1.2</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;104</td>
+              <td>~</td>
+              <td>&nbsp;2008.07.28 09:00:00</td>
+              <td>&nbsp;북강릉</td>
+              <td class="left">&nbsp;강원도 강릉시 사천면 방동리</td>
+              <td>&nbsp;37.80456</td>
+              <td>&nbsp;128.85535</td>
+              <td>&nbsp;75.24</td>
+              <td>&nbsp;76.67</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.4</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;105</td>
+              <td>~</td>
+              <td>&nbsp;1911.10.03 00:00:00</td>
+              <td>&nbsp;강릉</td>
+              <td class="left">&nbsp;강원도 강릉시 용강동</td>
+              <td>&nbsp;37.75147</td>
+              <td>&nbsp;128.89099</td>
+              <td>&nbsp;27.12</td>
+              <td>&nbsp;28.22</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;106</td>
+              <td>~</td>
+              <td>&nbsp;1992.05.01 00:00:00</td>
+              <td>&nbsp;동해</td>
+              <td class="left">&nbsp;강원도 동해시 용정동</td>
+              <td>&nbsp;37.50709</td>
+              <td>&nbsp;129.12433</td>
+              <td>&nbsp;40.46</td>
+              <td>&nbsp;41.66</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.4</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;108</td>
+              <td>~</td>
+              <td>&nbsp;1907.10.01 00:00:00</td>
+              <td>&nbsp;서울</td>
+              <td class="left">&nbsp;서울특별시 종로구 송월동</td>
+              <td>&nbsp;37.57142</td>
+              <td>&nbsp;126.9658</td>
+              <td>&nbsp;85.67</td>
+              <td>&nbsp;86.67</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;112</td>
+              <td>~</td>
+              <td>&nbsp;1904.08.29 00:00:00</td>
+              <td>&nbsp;인천</td>
+              <td class="left">&nbsp;인천광역시 중구 전동</td>
+              <td>&nbsp;37.47772</td>
+              <td>&nbsp;126.6249</td>
+              <td>&nbsp;68.99</td>
+              <td>&nbsp;70.19</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.2</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;114</td>
+              <td>~</td>
+              <td>&nbsp;1971.09.06 00:00:00</td>
+              <td>&nbsp;원주</td>
+              <td class="left">&nbsp;강원도 원주시 명륜동</td>
+              <td>&nbsp;37.33749</td>
+              <td>&nbsp;127.94659</td>
+              <td>&nbsp;150.11</td>
+              <td>&nbsp;151.11</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;14.0</td>
+              <td class="last">&nbsp;1.4</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;115</td>
+              <td>~</td>
+              <td>&nbsp;1938.08.10 00:00:00</td>
+              <td>&nbsp;울릉도</td>
+              <td class="left">&nbsp;경상북도 울릉군 울릉읍 도동리</td>
+              <td>&nbsp;37.48129</td>
+              <td>&nbsp;130.89864</td>
+              <td>&nbsp;221.14</td>
+              <td>&nbsp;223.7</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.3</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;119</td>
+              <td>~</td>
+              <td>&nbsp;1964.01.01 00:00:00</td>
+              <td>&nbsp;수원</td>
+              <td class="left">&nbsp;경기도 수원시 권선구 서둔동</td>
+              <td>&nbsp;37.25746</td>
+              <td>&nbsp;126.983</td>
+              <td>&nbsp;39.81</td>
+              <td>&nbsp;40.81</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;18.7</td>
+              <td class="last">&nbsp;1.1</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;121</td>
+              <td>~</td>
+              <td>&nbsp;1994.12.01 00:00:00</td>
+              <td>&nbsp;영월</td>
+              <td class="left">&nbsp;강원도 영월군 영월읍 하송리</td>
+              <td>&nbsp;37.18126</td>
+              <td>&nbsp;128.45743</td>
+              <td>&nbsp;240.54</td>
+              <td>&nbsp;242.05</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.4</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;127</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.01 00:00:00</td>
+              <td>&nbsp;충주</td>
+              <td class="left">&nbsp;충청북도 충주시 안림동</td>
+              <td>&nbsp;36.97045</td>
+              <td>&nbsp;127.9525</td>
+              <td>&nbsp;114.85</td>
+              <td>&nbsp;116.25</td>
+              <td>&nbsp;1.65</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.0</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;129</td>
+              <td>~</td>
+              <td>&nbsp;1968.01.01 00:00:00</td>
+              <td>&nbsp;서산</td>
+              <td class="left">&nbsp;충청남도 서산시 수석동</td>
+              <td>&nbsp;36.77658</td>
+              <td>&nbsp;126.4939</td>
+              <td>&nbsp;25.25</td>
+              <td>&nbsp;26.55</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;20.2</td>
+              <td class="last">&nbsp;1.1</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;130</td>
+              <td>~</td>
+              <td>&nbsp;1971.01.12 00:00:00</td>
+              <td>&nbsp;울진</td>
+              <td class="left">&nbsp;경상북도 울진군 울진읍 연지리</td>
+              <td>&nbsp;36.99176</td>
+              <td>&nbsp;129.41278</td>
+              <td>&nbsp;48.98</td>
+              <td>&nbsp;50.18</td>
+              <td>&nbsp;1.75</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.3</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;131</td>
+              <td>~</td>
+              <td>&nbsp;1967.01.01 00:00:00</td>
+              <td>&nbsp;청주</td>
+              <td class="left">&nbsp;충청북도 청주시흥덕구 복대동</td>
+              <td>&nbsp;36.63924</td>
+              <td>&nbsp;127.44066</td>
+              <td>&nbsp;58.7</td>
+              <td>&nbsp;60.1</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.8</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;133</td>
+              <td>~</td>
+              <td>&nbsp;1969.01.01 00:00:00</td>
+              <td>&nbsp;대전</td>
+              <td class="left">&nbsp;대전광역시 유성구 구성동</td>
+              <td>&nbsp;36.37199</td>
+              <td>&nbsp;127.3721</td>
+              <td>&nbsp;67.79</td>
+              <td>&nbsp;68.49</td>
+              <td>&nbsp;1.4</td>
+              <td>&nbsp;23.7</td>
+              <td class="last">&nbsp;1.0</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;135</td>
+              <td>~</td>
+              <td>&nbsp;1937.01.11 00:00:00</td>
+              <td>&nbsp;추풍령</td>
+              <td class="left">&nbsp;충청북도 영동군 추풍령면 관리</td>
+              <td>&nbsp;36.22025</td>
+              <td>&nbsp;127.99458</td>
+              <td>&nbsp;244.98</td>
+              <td>&nbsp;246.18</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.1</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;136</td>
+              <td>~</td>
+              <td>&nbsp;1973.01.01 00:00:00</td>
+              <td>&nbsp;안동</td>
+              <td class="left">&nbsp;경상북도 안동시 운안동</td>
+              <td>&nbsp;36.57293</td>
+              <td>&nbsp;128.70734</td>
+              <td>&nbsp;141.26</td>
+              <td>&nbsp;142.76</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.3</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;137</td>
+              <td>~</td>
+              <td>&nbsp;2002.01.01 00:00:00</td>
+              <td>&nbsp;상주</td>
+              <td class="left">&nbsp;경상북도 상주시 낙양동</td>
+              <td>&nbsp;36.40837</td>
+              <td>&nbsp;128.15741</td>
+              <td>&nbsp;96.58</td>
+              <td>&nbsp;97.98</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.4</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;138</td>
+              <td>~</td>
+              <td>&nbsp;1943.01.01 00:00:00</td>
+              <td>&nbsp;포항</td>
+              <td class="left">&nbsp;경상북도 포항시남구 송도동</td>
+              <td>&nbsp;36.03201</td>
+              <td>&nbsp;129.38002</td>
+              <td>&nbsp;3.94</td>
+              <td>&nbsp;4.92</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.2</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;140</td>
+              <td>~</td>
+              <td>&nbsp;1968.01.01 00:00:00</td>
+              <td>&nbsp;군산</td>
+              <td class="left">&nbsp;전라북도 군산시 내흥동</td>
+              <td>&nbsp;36.0053</td>
+              <td>&nbsp;126.76135</td>
+              <td>&nbsp;27.85</td>
+              <td>&nbsp;24.6</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.0</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;143</td>
+              <td>~</td>
+              <td>&nbsp;1907.01.31 00:00:00</td>
+              <td>&nbsp;대구</td>
+              <td class="left">&nbsp;대구광역시 동구 효목동</td>
+              <td>&nbsp;35.87797</td>
+              <td>&nbsp;128.65295</td>
+              <td>&nbsp;54.27</td>
+              <td>&nbsp;55.52</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;146</td>
+              <td>~</td>
+              <td>&nbsp;1918.06.23 00:00:00</td>
+              <td>&nbsp;전주</td>
+              <td class="left">&nbsp;전라북도 전주시덕진구 덕진동2가</td>
+              <td>&nbsp;35.84092</td>
+              <td>&nbsp;127.11718</td>
+              <td>&nbsp;60.44</td>
+              <td>&nbsp;62.9</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.4</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;152</td>
+              <td>~</td>
+              <td>&nbsp;1932.01.06 00:00:00</td>
+              <td>&nbsp;울산</td>
+              <td class="left">&nbsp;울산광역시 중구 북정동</td>
+              <td>&nbsp;35.58237</td>
+              <td>&nbsp;129.33469</td>
+              <td>&nbsp;81.14</td>
+              <td>&nbsp;83.2</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.3</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;155</td>
+              <td>~</td>
+              <td>&nbsp;1985.07.01 00:00:00</td>
+              <td>&nbsp;창원</td>
+              <td class="left">&nbsp;경상남도 창원시 마산합포구 가포동</td>
+              <td>&nbsp;35.17019</td>
+              <td>&nbsp;128.57281</td>
+              <td>&nbsp;34.97</td>
+              <td>&nbsp;39.1</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.3</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;156</td>
+              <td>~</td>
+              <td>&nbsp;1939.05.01 00:00:00</td>
+              <td>&nbsp;광주</td>
+              <td class="left">&nbsp;광주광역시 북구 운암동</td>
+              <td>&nbsp;35.17294</td>
+              <td>&nbsp;126.89156</td>
+              <td>&nbsp;70.28</td>
+              <td>&nbsp;73.9</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;17.5</td>
+              <td class="last">&nbsp;0.8</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;159</td>
+              <td>~</td>
+              <td>&nbsp;1904.04.09 00:00:00</td>
+              <td>&nbsp;부산</td>
+              <td class="left">&nbsp;부산광역시 중구 대청동1가</td>
+              <td>&nbsp;35.10468</td>
+              <td>&nbsp;129.03203</td>
+              <td>&nbsp;69.56</td>
+              <td>&nbsp;70.9</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;18.0</td>
+              <td class="last">&nbsp;1.3</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;162</td>
+              <td>~</td>
+              <td>&nbsp;1968.01.01 00:00:00</td>
+              <td>&nbsp;통영</td>
+              <td class="left">&nbsp;경상남도 통영시 정량동</td>
+              <td>&nbsp;34.84541</td>
+              <td>&nbsp;128.43561</td>
+              <td>&nbsp;31.24</td>
+              <td>&nbsp;33.2</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;18.0</td>
+              <td class="last">&nbsp;1.3</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;165</td>
+              <td>~</td>
+              <td>&nbsp;1904.04.08 00:00:00</td>
+              <td>&nbsp;목포</td>
+              <td class="left">&nbsp;전라남도 목포시 연산동</td>
+              <td>&nbsp;34.81732</td>
+              <td>&nbsp;126.38151</td>
+              <td>&nbsp;44.7</td>
+              <td>&nbsp;39.2</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;14.5</td>
+              <td class="last">&nbsp;1.0</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;168</td>
+              <td>~</td>
+              <td>&nbsp;1942.03.01 00:00:00</td>
+              <td>&nbsp;여수</td>
+              <td class="left">&nbsp;전라남도 여수시 중앙동</td>
+              <td>&nbsp;34.73929</td>
+              <td>&nbsp;127.74063</td>
+              <td>&nbsp;65.93</td>
+              <td>&nbsp;66.1</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;13.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;169</td>
+              <td>~</td>
+              <td>&nbsp;1997.01.01 00:00:00</td>
+              <td>&nbsp;흑산도</td>
+              <td class="left">&nbsp;전라남도 신안군 흑산면 예리</td>
+              <td>&nbsp;34.68719</td>
+              <td>&nbsp;125.45105</td>
+              <td>&nbsp;75.12</td>
+              <td>&nbsp;78.0</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;15.5</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;170</td>
+              <td>~</td>
+              <td>&nbsp;1971.01.31 00:00:00</td>
+              <td>&nbsp;완도</td>
+              <td class="left">&nbsp;전라남도 완도군 군외면 불목리</td>
+              <td>&nbsp;34.3959</td>
+              <td>&nbsp;126.70182</td>
+              <td>&nbsp;35.37</td>
+              <td>&nbsp;36.7</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.8</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;172</td>
+              <td>~</td>
+              <td>&nbsp;2010.12.01 00:00:00</td>
+              <td>&nbsp;고창</td>
+              <td class="left">&nbsp;전라북도 고창군 대산면 매산리</td>
+              <td>&nbsp;35.34824</td>
+              <td>&nbsp;126.599</td>
+              <td>&nbsp;52.42</td>
+              <td>&nbsp;53.5</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.7</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;174</td>
+              <td>~</td>
+              <td>&nbsp;2011.04.01 00:00:00</td>
+              <td>&nbsp;순천</td>
+              <td class="left">&nbsp;전라남도 순천시 승주읍 평중리</td>
+              <td>&nbsp;35.0204</td>
+              <td>&nbsp;127.3694</td>
+              <td>&nbsp;165.0</td>
+              <td>&nbsp;166.5</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.8</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;177</td>
+              <td>~</td>
+              <td>&nbsp;2015.11.03 15:00:00</td>
+              <td>&nbsp;홍성</td>
+              <td class="left">&nbsp;</td>
+              <td>&nbsp;36.65759</td>
+              <td>&nbsp;126.68772</td>
+              <td>&nbsp;27.74</td>
+              <td>&nbsp;28.7</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;181</td>
+              <td>~</td>
+              <td>&nbsp;2022.01.21 00:00:00</td>
+              <td>&nbsp;서청주</td>
+              <td class="left">&nbsp;</td>
+              <td>&nbsp;36.64002</td>
+              <td>&nbsp;127.38466</td>
+              <td>&nbsp;32.0</td>
+              <td>&nbsp;32.0</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;184</td>
+              <td>~</td>
+              <td>&nbsp;1923.05.01 00:00:00</td>
+              <td>&nbsp;제주</td>
+              <td class="left">&nbsp;제주특별자치도 제주시 건입동</td>
+              <td>&nbsp;33.51411</td>
+              <td>&nbsp;126.52969</td>
+              <td>&nbsp;20.79</td>
+              <td>&nbsp;21.99</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;15.0</td>
+              <td class="last">&nbsp;1.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;185</td>
+              <td>~</td>
+              <td>&nbsp;1988.01.01 00:00:00</td>
+              <td>&nbsp;고산</td>
+              <td class="left">&nbsp;제주특별자치도 제주시 한경면 고산리</td>
+              <td>&nbsp;33.29382</td>
+              <td>&nbsp;126.16283</td>
+              <td>&nbsp;71.39</td>
+              <td>&nbsp;72.49</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;188</td>
+              <td>~</td>
+              <td>&nbsp;1971.07.15 00:00:00</td>
+              <td>&nbsp;성산</td>
+              <td class="left">&nbsp;제주특별자치도 서귀포시 성산읍 신산리</td>
+              <td>&nbsp;33.38677</td>
+              <td>&nbsp;126.8802</td>
+              <td>&nbsp;20.34</td>
+              <td>&nbsp;21.74</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;189</td>
+              <td>~</td>
+              <td>&nbsp;1961.01.01 00:00:00</td>
+              <td>&nbsp;서귀포</td>
+              <td class="left">&nbsp;제주특별자치도 서귀포시 서귀동</td>
+              <td>&nbsp;33.24616</td>
+              <td>&nbsp;126.5653</td>
+              <td>&nbsp;51.86</td>
+              <td>&nbsp;53.16</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;192</td>
+              <td>~</td>
+              <td>&nbsp;1969.03.01 00:00:00</td>
+              <td>&nbsp;진주</td>
+              <td class="left">&nbsp;경상남도 진주시 평거동</td>
+              <td>&nbsp;35.16378</td>
+              <td>&nbsp;128.04004</td>
+              <td>&nbsp;29.35</td>
+              <td>&nbsp;31.6</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.3</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;201</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.11 00:00:00</td>
+              <td>&nbsp;강화</td>
+              <td class="left">&nbsp;인천광역시 강화군 불은면 삼성리</td>
+              <td>&nbsp;37.70739</td>
+              <td>&nbsp;126.44634</td>
+              <td>&nbsp;47.84</td>
+              <td>&nbsp;49.24</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;202</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.11 00:00:00</td>
+              <td>&nbsp;양평</td>
+              <td class="left">&nbsp;경기도 양평군 양평읍 양근리</td>
+              <td>&nbsp;37.48863</td>
+              <td>&nbsp;127.49446</td>
+              <td>&nbsp;47.26</td>
+              <td>&nbsp;48.76</td>
+              <td>&nbsp;1.9</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;203</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.11 00:00:00</td>
+              <td>&nbsp;이천</td>
+              <td class="left">&nbsp;경기도 이천시 부발읍 신하리</td>
+              <td>&nbsp;37.26399</td>
+              <td>&nbsp;127.48421</td>
+              <td>&nbsp;80.09</td>
+              <td>&nbsp;81.59</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;211</td>
+              <td>~</td>
+              <td>&nbsp;1971.12.01 00:00:00</td>
+              <td>&nbsp;인제</td>
+              <td class="left">&nbsp;강원도 인제군 인제읍 남북리</td>
+              <td>&nbsp;38.05986</td>
+              <td>&nbsp;128.16714</td>
+              <td>&nbsp;201.78</td>
+              <td>&nbsp;202.78</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;212</td>
+              <td>~</td>
+              <td>&nbsp;1971.09.27 00:00:00</td>
+              <td>&nbsp;홍천</td>
+              <td class="left">&nbsp;강원도 홍천군 홍천읍 연봉리</td>
+              <td>&nbsp;37.6836</td>
+              <td>&nbsp;127.88043</td>
+              <td>&nbsp;140.2</td>
+              <td>&nbsp;141.2</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;13.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;216</td>
+              <td>~</td>
+              <td>&nbsp;1985.08.01 00:00:00</td>
+              <td>&nbsp;태백</td>
+              <td class="left">&nbsp;강원도 태백시 황지동</td>
+              <td>&nbsp;37.17038</td>
+              <td>&nbsp;128.98929</td>
+              <td>&nbsp;714.45</td>
+              <td>&nbsp;715.25</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;16.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;217</td>
+              <td>~</td>
+              <td>&nbsp;2010.08.06 00:00:00</td>
+              <td>&nbsp;정선군</td>
+              <td class="left">&nbsp;강원도 정선군 정선읍 북실리</td>
+              <td>&nbsp;37.37732</td>
+              <td>&nbsp;128.67348</td>
+              <td>&nbsp;312.0</td>
+              <td>&nbsp;312.0</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;221</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.11 00:00:00</td>
+              <td>&nbsp;제천</td>
+              <td class="left">&nbsp;충청북도 제천시 신월동</td>
+              <td>&nbsp;37.15928</td>
+              <td>&nbsp;128.19434</td>
+              <td>&nbsp;264.62</td>
+              <td>&nbsp;265.39</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;226</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.09 00:00:00</td>
+              <td>&nbsp;보은</td>
+              <td class="left">&nbsp;충청북도 보은군 보은읍 성주리</td>
+              <td>&nbsp;36.48761</td>
+              <td>&nbsp;127.73415</td>
+              <td>&nbsp;171.31</td>
+              <td>&nbsp;172.71</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;232</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.08 00:00:00</td>
+              <td>&nbsp;천안</td>
+              <td class="left">&nbsp;충청남도 천안시 신방동</td>
+              <td>&nbsp;36.76217</td>
+              <td>&nbsp;127.29282</td>
+              <td>&nbsp;84.78</td>
+              <td>&nbsp;83.0</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.2</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;235</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.24 00:00:00</td>
+              <td>&nbsp;보령</td>
+              <td class="left">&nbsp;충청남도 보령시 요암동</td>
+              <td>&nbsp;36.32724</td>
+              <td>&nbsp;126.55744</td>
+              <td>&nbsp;9.98</td>
+              <td>&nbsp;17.0</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.1</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;236</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.09 00:00:00</td>
+              <td>&nbsp;부여</td>
+              <td class="left">&nbsp;충청남도 부여군 부여읍 가탑리</td>
+              <td>&nbsp;36.27242</td>
+              <td>&nbsp;126.92079</td>
+              <td>&nbsp;13.42</td>
+              <td>&nbsp;14.88</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;238</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.09 00:00:00</td>
+              <td>&nbsp;금산</td>
+              <td class="left">&nbsp;충청남도 금산군 금산읍 아인리</td>
+              <td>&nbsp;36.10563</td>
+              <td>&nbsp;127.48175</td>
+              <td>&nbsp;172.69</td>
+              <td>&nbsp;173.99</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;239</td>
+              <td>~</td>
+              <td>&nbsp;2019.05.31 10:00:00</td>
+              <td>&nbsp;세종</td>
+              <td class="left">&nbsp;</td>
+              <td>&nbsp;36.48522</td>
+              <td>&nbsp;127.24438</td>
+              <td>&nbsp;89.5</td>
+              <td>&nbsp;95.0</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.0</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;243</td>
+              <td>~</td>
+              <td>&nbsp;1972.03.01 00:00:00</td>
+              <td>&nbsp;부안</td>
+              <td class="left">&nbsp;전라북도 부안군 행안면 역리</td>
+              <td>&nbsp;35.72961</td>
+              <td>&nbsp;126.71657</td>
+              <td>&nbsp;12.2</td>
+              <td>&nbsp;13.5</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;244</td>
+              <td>~</td>
+              <td>&nbsp;1970.06.02 00:00:00</td>
+              <td>&nbsp;임실</td>
+              <td class="left">&nbsp;전라북도 임실군 임실읍 이도리</td>
+              <td>&nbsp;35.61203</td>
+              <td>&nbsp;127.28556</td>
+              <td>&nbsp;247.04</td>
+              <td>&nbsp;248.44</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;245</td>
+              <td>~</td>
+              <td>&nbsp;1970.01.05 00:00:00</td>
+              <td>&nbsp;정읍</td>
+              <td class="left">&nbsp;전라북도 정읍시 상동</td>
+              <td>&nbsp;35.56337</td>
+              <td>&nbsp;126.83904</td>
+              <td>&nbsp;68.7</td>
+              <td>&nbsp;70.97</td>
+              <td>&nbsp;1.9</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.0</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;247</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.04 00:00:00</td>
+              <td>&nbsp;남원</td>
+              <td class="left">&nbsp;전라북도 남원시 도통동</td>
+              <td>&nbsp;35.4213</td>
+              <td>&nbsp;127.39652</td>
+              <td>&nbsp;133.49</td>
+              <td>&nbsp;91.8</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.7</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;248</td>
+              <td>~</td>
+              <td>&nbsp;1988.01.01 00:00:00</td>
+              <td>&nbsp;장수</td>
+              <td class="left">&nbsp;전라북도 장수군 장수읍 선창리</td>
+              <td>&nbsp;35.65696</td>
+              <td>&nbsp;127.52031</td>
+              <td>&nbsp;406.87</td>
+              <td>&nbsp;408.0</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;251</td>
+              <td>~</td>
+              <td>&nbsp;2007.11.01 00:00:00</td>
+              <td>&nbsp;고창군</td>
+              <td class="left">&nbsp;전라북도 고창군 고창읍 덕산리</td>
+              <td>&nbsp;35.42661</td>
+              <td>&nbsp;126.697</td>
+              <td>&nbsp;58.84</td>
+              <td>&nbsp;55.5</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;252</td>
+              <td>~</td>
+              <td>&nbsp;2007.11.26 00:00:00</td>
+              <td>&nbsp;영광군</td>
+              <td class="left">&nbsp;전라남도 영광군 군서면 만곡리</td>
+              <td>&nbsp;35.28366</td>
+              <td>&nbsp;126.47784</td>
+              <td>&nbsp;37.2</td>
+              <td>&nbsp;38.7</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;13.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;253</td>
+              <td>~</td>
+              <td>&nbsp;2008.02.13 14:00:00</td>
+              <td>&nbsp;김해시</td>
+              <td class="left">&nbsp;경상남도 김해시 부원동</td>
+              <td>&nbsp;35.22981</td>
+              <td>&nbsp;128.89075</td>
+              <td>&nbsp;54.59</td>
+              <td>&nbsp;54.6</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;254</td>
+              <td>~</td>
+              <td>&nbsp;2008.07.16 20:00:00</td>
+              <td>&nbsp;순창군</td>
+              <td class="left">&nbsp;전라북도 순창군 순창읍 교성리</td>
+              <td>&nbsp;35.37131</td>
+              <td>&nbsp;127.1286</td>
+              <td>&nbsp;129.38</td>
+              <td>&nbsp;128.4</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;255</td>
+              <td>~</td>
+              <td>&nbsp;2008.12.26 00:00:00</td>
+              <td>&nbsp;북창원</td>
+              <td class="left">&nbsp;경상남도 창원시 내동</td>
+              <td>&nbsp;35.22655</td>
+              <td>&nbsp;128.6726</td>
+              <td>&nbsp;50.95</td>
+              <td>&nbsp;50.3</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.7</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;257</td>
+              <td>~</td>
+              <td>&nbsp;2008.12.26 00:00:00</td>
+              <td>&nbsp;양산시</td>
+              <td class="left">&nbsp;경상남도 양산시 동면 금산리</td>
+              <td>&nbsp;35.30737</td>
+              <td>&nbsp;129.0201</td>
+              <td>&nbsp;6.29</td>
+              <td>&nbsp;16.1</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;258</td>
+              <td>~</td>
+              <td>&nbsp;2010.02.08 00:00:00</td>
+              <td>&nbsp;보성군</td>
+              <td class="left">&nbsp;전라남도 보성군 득량면 예당리</td>
+              <td>&nbsp;34.76335</td>
+              <td>&nbsp;127.21226</td>
+              <td>&nbsp;1.41</td>
+              <td>&nbsp;4.3</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;259</td>
+              <td>~</td>
+              <td>&nbsp;2009.11.10 00:00:00</td>
+              <td>&nbsp;강진군</td>
+              <td class="left">&nbsp;전라남도 강진군 강진읍 남포리</td>
+              <td>&nbsp;34.64457</td>
+              <td>&nbsp;126.78408</td>
+              <td>&nbsp;16.0</td>
+              <td>&nbsp;20.0</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;260</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.21 00:00:00</td>
+              <td>&nbsp;장흥</td>
+              <td class="left">&nbsp;전라남도 장흥군 장흥읍 축내리</td>
+              <td>&nbsp;34.68886</td>
+              <td>&nbsp;126.91951</td>
+              <td>&nbsp;43.99</td>
+              <td>&nbsp;46.3</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.8</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;261</td>
+              <td>~</td>
+              <td>&nbsp;1971.02.03 00:00:00</td>
+              <td>&nbsp;해남</td>
+              <td class="left">&nbsp;전라남도 해남군 해남읍 남천리</td>
+              <td>&nbsp;34.55375</td>
+              <td>&nbsp;126.56907</td>
+              <td>&nbsp;16.36</td>
+              <td>&nbsp;17.91</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.8</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;262</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.22 00:00:00</td>
+              <td>&nbsp;고흥</td>
+              <td class="left">&nbsp;전라남도 고흥군 고흥읍 행정리</td>
+              <td>&nbsp;34.61826</td>
+              <td>&nbsp;127.27572</td>
+              <td>&nbsp;51.91</td>
+              <td>&nbsp;53.31</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.8</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;263</td>
+              <td>~</td>
+              <td>&nbsp;2010.06.21 00:00:00</td>
+              <td>&nbsp;의령군</td>
+              <td class="left">&nbsp;경상남도 의령군 의령읍 무전리</td>
+              <td>&nbsp;35.32258</td>
+              <td>&nbsp;128.28812</td>
+              <td>&nbsp;14.1</td>
+              <td>&nbsp;14.9</td>
+              <td>&nbsp;2.0</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;264</td>
+              <td>~</td>
+              <td>&nbsp;2010.06.21 00:00:00</td>
+              <td>&nbsp;함양군</td>
+              <td class="left">&nbsp;경상남도 함양군 함양읍 용평리</td>
+              <td>&nbsp;35.51138</td>
+              <td>&nbsp;127.74538</td>
+              <td>&nbsp;152.07</td>
+              <td>&nbsp;152.5</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;266</td>
+              <td>~</td>
+              <td>&nbsp;2011.01.01 00:00:00</td>
+              <td>&nbsp;광양시</td>
+              <td class="left">&nbsp;전라남도 광양시 중동</td>
+              <td>&nbsp;34.9434</td>
+              <td>&nbsp;127.6914</td>
+              <td>&nbsp;88.21</td>
+              <td>&nbsp;87.9</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;268</td>
+              <td>~</td>
+              <td>&nbsp;2014.05.09 21:15:00</td>
+              <td>&nbsp;진도군</td>
+              <td class="left">&nbsp;전라남도 진도군 진도읍 남동리</td>
+              <td>&nbsp;34.47296</td>
+              <td>&nbsp;126.25846</td>
+              <td>&nbsp;9.82</td>
+              <td>&nbsp;6.9</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;271</td>
+              <td>~</td>
+              <td>&nbsp;1988.01.01 00:00:00</td>
+              <td>&nbsp;봉화</td>
+              <td class="left">&nbsp;경상북도 봉화군 춘양면 의양리</td>
+              <td>&nbsp;36.94361</td>
+              <td>&nbsp;128.91449</td>
+              <td>&nbsp;324.67</td>
+              <td>&nbsp;326.22</td>
+              <td>&nbsp;1.9</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;272</td>
+              <td>~</td>
+              <td>&nbsp;1972.11.28 00:00:00</td>
+              <td>&nbsp;영주</td>
+              <td class="left">&nbsp;경상북도 영주시 풍기읍 성내리</td>
+              <td>&nbsp;36.87183</td>
+              <td>&nbsp;128.51688</td>
+              <td>&nbsp;211.32</td>
+              <td>&nbsp;212.78</td>
+              <td>&nbsp;1.91</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.58</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;273</td>
+              <td>~</td>
+              <td>&nbsp;1973.01.01 00:00:00</td>
+              <td>&nbsp;문경</td>
+              <td class="left">&nbsp;경상북도 문경시 유곡동</td>
+              <td>&nbsp;36.62727</td>
+              <td>&nbsp;128.14879</td>
+              <td>&nbsp;173.01</td>
+              <td>&nbsp;174.51</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;276</td>
+              <td>~</td>
+              <td>&nbsp;2010.09.01 00:00:00</td>
+              <td>&nbsp;청송군</td>
+              <td class="left">&nbsp;경상북도 청송군 청송읍</td>
+              <td>&nbsp;36.4351</td>
+              <td>&nbsp;129.04005</td>
+              <td>&nbsp;208.65</td>
+              <td>&nbsp;210.2</td>
+              <td>&nbsp;1.75</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;277</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.03 00:00:00</td>
+              <td>&nbsp;영덕</td>
+              <td class="left">&nbsp;경상북도 영덕군 영해면 성내리</td>
+              <td>&nbsp;36.53337</td>
+              <td>&nbsp;129.40926</td>
+              <td>&nbsp;40.71</td>
+              <td>&nbsp;42.01</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;278</td>
+              <td>~</td>
+              <td>&nbsp;1973.01.01 00:00:00</td>
+              <td>&nbsp;의성</td>
+              <td class="left">&nbsp;경상북도 의성군 의성읍 원당리</td>
+              <td>&nbsp;36.3561</td>
+              <td>&nbsp;128.68864</td>
+              <td>&nbsp;81.44</td>
+              <td>&nbsp;82.94</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;279</td>
+              <td>~</td>
+              <td>&nbsp;1973.01.01 00:00:00</td>
+              <td>&nbsp;구미</td>
+              <td class="left">&nbsp;경상북도 구미시 남통동</td>
+              <td>&nbsp;36.13055</td>
+              <td>&nbsp;128.32056</td>
+              <td>&nbsp;49.17</td>
+              <td>&nbsp;50.67</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.4</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;281</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.21 00:00:00</td>
+              <td>&nbsp;영천</td>
+              <td class="left">&nbsp;경상북도 영천시 망정동</td>
+              <td>&nbsp;35.97742</td>
+              <td>&nbsp;128.9514</td>
+              <td>&nbsp;96.12</td>
+              <td>&nbsp;97.62</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;283</td>
+              <td>~</td>
+              <td>&nbsp;2010.08.06 00:00:00</td>
+              <td>&nbsp;경주시</td>
+              <td class="left">&nbsp;경상북도 경주시 탑동</td>
+              <td>&nbsp;35.8174</td>
+              <td>&nbsp;129.2009</td>
+              <td>&nbsp;40.13</td>
+              <td>&nbsp;41.63</td>
+              <td>&nbsp;1.67</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.59</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;284</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.24 00:00:00</td>
+              <td>&nbsp;거창</td>
+              <td class="left">&nbsp;경상남도 거창군 거창읍 정장리</td>
+              <td>&nbsp;35.66739</td>
+              <td>&nbsp;127.9099</td>
+              <td>&nbsp;228.45</td>
+              <td>&nbsp;227.3</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.3</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;285</td>
+              <td>~</td>
+              <td>&nbsp;1973.01.01 00:00:00</td>
+              <td>&nbsp;합천</td>
+              <td class="left">&nbsp;경상남도 합천군 합천읍 합천리</td>
+              <td>&nbsp;35.56505</td>
+              <td>&nbsp;128.16994</td>
+              <td>&nbsp;26.72</td>
+              <td>&nbsp;33.2</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.5</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;288</td>
+              <td>~</td>
+              <td>&nbsp;1973.01.01 00:00:00</td>
+              <td>&nbsp;밀양</td>
+              <td class="left">&nbsp;경상남도 밀양시 내이동</td>
+              <td>&nbsp;35.49147</td>
+              <td>&nbsp;128.74413</td>
+              <td>&nbsp;8.31</td>
+              <td>&nbsp;12.5</td>
+              <td>&nbsp;2.0</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;1.3</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;289</td>
+              <td>~</td>
+              <td>&nbsp;1972.03.30 00:00:00</td>
+              <td>&nbsp;산청</td>
+              <td class="left">&nbsp;경상남도 산청군 산청읍 지리</td>
+              <td>&nbsp;35.413</td>
+              <td>&nbsp;127.8791</td>
+              <td>&nbsp;138.22</td>
+              <td>&nbsp;138.8</td>
+              <td>&nbsp;1.6</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;294</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.24 00:00:00</td>
+              <td>&nbsp;거제</td>
+              <td class="left">&nbsp;경상남도 거제시 신현읍 장평리</td>
+              <td>&nbsp;34.88818</td>
+              <td>&nbsp;128.60458</td>
+              <td>&nbsp;44.83</td>
+              <td>&nbsp;46.7</td>
+              <td>&nbsp;1.7</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.6</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;295</td>
+              <td>~</td>
+              <td>&nbsp;1972.01.24 00:00:00</td>
+              <td>&nbsp;남해</td>
+              <td class="left">&nbsp;경상남도 남해군 이동면 다정리</td>
+              <td>&nbsp;34.81662</td>
+              <td>&nbsp;127.92641</td>
+              <td>&nbsp;45.71</td>
+              <td>&nbsp;47.01</td>
+              <td>&nbsp;1.8</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.8</td>
+            </tr>
+
+
+
+
+
+
+
+
+            <tr>
+              <td>&nbsp;296</td>
+              <td>~</td>
+              <td>&nbsp;2023.01.11 00:00:00</td>
+              <td>&nbsp;북부산</td>
+              <td class="left">&nbsp;</td>
+              <td>&nbsp;35.21778</td>
+              <td>&nbsp;128.96024</td>
+              <td>&nbsp;3.0</td>
+              <td>&nbsp;4.5</td>
+              <td>&nbsp;1.5</td>
+              <td>&nbsp;10.0</td>
+              <td class="last">&nbsp;0.7</td>
+            </tr>
+
+
+
+
+
+          </tbody>
+        </table>
+      </div>
+    </form>
+  </div>
+  <div class="closebox" style="width:1140px; height:30px;">
+    <a href="javascript:window.close()" class="btn" style="float:right;margin-right:5px"><span>닫기 X</span></a>
+  </div>
+
+  <!-- end .container -->
+</body>
+
+</html>

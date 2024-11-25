@@ -2,7 +2,7 @@ import requests
 
 # 네이버 API 키 설정
 CLIENT_ID = "048yod4phr"
-CLIENT_SECRET = "__secretkey__"
+CLIENT_SECRET = ""
 
 def get_address(lat, lon):
     url = "https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc"

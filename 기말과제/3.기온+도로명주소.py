@@ -2,15 +2,15 @@ import geocoder
 import requests
 
 # OpenWeatherMap API 키
-WEATHERMAP_API_KEY = "_"
+WEATHERMAP_API_KEY = ""
 WEATHERMAP_BASE_URL = "https://api.openweathermap.org/data/2.5/weather"
 
 # 네이버 클라우드 플랫폼 Reverse Geocode API 키
 NAVER_CLIENT_ID = "048yod4phr"
-NAVER_CLIENT_SECRET = "_"
+NAVER_CLIENT_SECRET = ""
 
 # Google Geolocation API 키
-GOOGLE_API_KEY = "_"
+GOOGLE_API_KEY = ""
 GOOGLE_URL = f"https://www.googleapis.com/geolocation/v1/geolocate?key={GOOGLE_API_KEY}"
 
 # 하는 일: 전달받은 좌표의 기온과 날씨 반환
